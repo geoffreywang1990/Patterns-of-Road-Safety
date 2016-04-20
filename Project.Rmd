@@ -10,48 +10,17 @@ output:
     highlight: tango
 ---
 
-##### This homework is due by **10:30AM on Thursday, March 24**.  
-
-##### To complete this assignment, follow these steps:
-
-1. Download the `homework1.Rmd` file from Blackboard or the course website.
-
-2. Open `homework1.Rmd` in RStudio.
-
-3. Replace the "Your Name Here" text in the `author:` field with your own name.
-
-4. Supply your solutions to the homework by editing `homework5.Rmd`.
-
-5. When you have completed the homework and have **checked** that your code both runs in the Console and knits correctly when you click `Knit HTML`, rename the R Markdown file to `homework1_YourNameHere.Rmd`, and submit both the `.Rmd` file and the `.html` output file on Blackboard.  (YourNameHere should be changed to your own name.)
-
-##### Homework tips:
-
-1. Recall the following useful RStudio hotkeys.
-
-Keystroke | Description
-----------|-------------
-`<tab>` | Autocompletes commands and filenames, and lists arguments for functions.
-`<up>` | Cycles through previous commands in the console prompt
-`<ctrl-up>` | Lists history of previous commands matching an unfinished one
-`<ctrl-enter>` | Runs current line from source window to Console. Good for trying things out ideas from a source file.
-`<ESC>` | Aborts an unfinished command and get out of the + prompt
-
-**Note**: Shown above are the Windows/Linux keys.  For Mac OS X, the `<ctrl>` key should be substituted with the `<command>` (&#8984;) key.
-
-2. Instead of sending code line-by-line with `<ctrl-enter>`, you can send entire code chunks, and even run all of the code chunks in your .Rmd file. Look under the <Chunks> menu of the Source panel.
-
-3. Run your code in the Console and Knit HTML frequently to check for errors.
-
-4. You may find it easier to solve a problem by interacting only with the Console at first, or by creating a separate `.R` source file that contains only R code and no Markdown.
-
-### Introduction: Bikeshare data
+### Preamble: Loading packages and data
 
 ```{r}
 library(ggplot2)
-library(plyr)
 library(ISLR)
 library(MASS)
+library(klaR)
 library(knitr)
+library(glmnet)
+library(plyr)
+library(gam)
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -65,7 +34,7 @@ For this problem we'll be working with two years of bikeshare data from the Capi
 Let's start by loading the data.
 
 ```{r}
-bikes <- read.csv("http://www.andrew.cmu.edu/user/achoulde/95791/data/bikes.csv", header = TRUE)
+AccidentData <- read.csv("./DfTRoadSafety_Accidents_2012.csv", header = TRUE)
 
 # Transform temp and atemp to degrees C instead of [0,1] scale
 # Transform humidity to %
