@@ -34,7 +34,7 @@ For this problem we'll be working with two years of bikeshare data from the Capi
 Let's start by loading the data.
 
 ```{r}
-AccidentData <- read.csv("./DfTRoadSafety_Accidents_2012.csv", header = TRUE)
+AccidentData <- read.csv("http://www.andrew.cmu.edu/user/achoulde/95791/projects/Project%20D/DfTRoadSafety_Accidents_2012.csv", header = TRUE)
 
 # Transform temp and atemp to degrees C instead of [0,1] scale
 # Transform humidity to %
@@ -53,7 +53,7 @@ AccidentData <- read.csv("./DfTRoadSafety_Accidents_2012.csv", header = TRUE)
 #bikes <- transform(bikes, 
  #                  season = mapvalues(season, c(1,2,3,4), 
   #                                    c("Winter", "Spring", "Summer", "Fall")))
-plot(x=AccidentData$Longitude,y=AccidentData$Latitude)
+#plot(x=AccidentData$Longitude,y=AccidentData$Latitude)
 
 panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 {
@@ -65,9 +65,25 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
      if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
      text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
 }
-pairs(~Accident_Severity+Number_of_Vehicles+Number_of_Casualties+X1st_Road_Class+Junction_Detail,data=AccidentData,lower.panel = panel.cor)
+#pairs(~Accident_Severity+Number_of_Vehicles+Number_of_Casualties+X1st_Road_Class+Junction_Detail,data=AccidentData,lower.panel = panel.cor)
 ```
 
+
+```{r}
+set.seed(531)
+
+# Randomly select 20% of the data to be held out for model validation
+AccidentData.1.test.idx <- sample(which(AccidentData$Accident_Severity == 1),length(which(AccidentData$Accident_Severity == 1))*0.2,replace =TRUE)
+AccidentData.2.test.idx <- sample(which(AccidentData$Accident_Severity == 2),length(which(AccidentData$Accident_Severity == 2))*0.2,replace =TRUE)
+AccidentData.3.test.idx <- sample(which(AccidentData$Accident_Severity == 3),length(which(AccidentData$Accident_Severity == 3))*0.2,replace =TRUE)
+AccidentData.test.ind <- c(AccidentData.1.test.idx,AccidentData.2.test.idx,AccidentData.3.test.idx)
+AccidentData.train.ind <- setdiff(1:nrow(marketing.upsample), AccidentData.test.ind)
+
+# Just pull the covariates available to marketers (cols 1:8) and the outcome (col 17)
+AccidentData.train <- AccidentData[AccidentData.train.ind, c(10,11,12,17,18,23,25,26,27,30,7)]
+AccidentData.test <- AccidentData[AccidentData.test.ind, c(10,11,12,17,18,23,25,26,27,30,7)]
+AccidentData.location <- AccidentData[,c(4,5,7)]
+```
 Let's look at some boxplots of how bikeshare ride count varies with season.
 
 ```{r, fig.height = 4, fig.width = 5} 
