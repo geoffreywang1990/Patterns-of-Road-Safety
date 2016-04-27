@@ -52,24 +52,48 @@ Now I am going to split these data
 
 ```{r}
 set.seed(531)
+days=rep(0,length(AccidentData$Time))
+
 AccidentData$Day_of_Week[which(AccidentData$Day_of_Week==7)]=1
-AccidentData$Day_of_Week[which(AccidentData$Day_of_Week!=1)]=2
+days[which(AccidentData$Day_of_Week==1)] = "Weekend"
+days[which(AccidentData$Day_of_Week==7)] = "Weekend"
+AccidentData$Day_of_Week[which(AccidentData$Day_of_Week!= 1)] = 0
+days[which(AccidentData$Day_of_Week!= 1)] = "Workday"
 
-
+timePeriod=rep(0,length(AccidentData$Time))
 time=rep(0,length(AccidentData$Time))
-time[which(as.numeric(AccidentData$Time)< 421)]=1      #1: 00:00-06:59
-AccidentData$Time[which(as.numeric(AccidentData$Time)< 421)]="23:59"
-time[which(as.numeric(AccidentData$Time)< 542)]=2      #1: 07:00-09:00
-AccidentData$Time[which(as.numeric(AccidentData$Time)< 542)]="23:59"
-time[which(as.numeric(AccidentData$Time)< 1021)]=3      #1: 09:01-16:59
-AccidentData$Time[which(as.numeric(AccidentData$Time)< 1021)]="23:59"
-time[which(as.numeric(AccidentData$Time)< 1142)]=4      #1: 17:00-19:00
-AccidentData$Time[which(as.numeric(AccidentData$Time)< 1141)]="23:59"
-time[which(time==0)]=5
+timePeriod[which(as.numeric(AccidentData$Time)< 421-60)]="Night"      #1: 00:00-06:59   
+time[which(as.numeric(AccidentData$Time)< 421-60)]=1
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 421-60)]="23:59"
 
-AccidentData <- data.frame(AccidentData,time)
 
-AccidentData <- transform(AccidentData, Speed_limit = Speed_limit/10)
+timePeriod[which(as.numeric(AccidentData$Time)< 542+60)]="Morning Rush Hours"      #1: 07:00-09:00
+time[which(as.numeric(AccidentData$Time)< 542+60)] = 2
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 542+60)]="23:59"
+
+timePeriod[which(as.numeric(AccidentData$Time)< 1021-60)]="Day Time"      #1: 09:01-16:59
+time[which(as.numeric(AccidentData$Time)< 1021-60)] = 3
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 1021-60)]="23:59"
+
+timePeriod[which(as.numeric(AccidentData$Time)< 1142+60)]="Night Rush Hours"      #1: 17:00-19:00
+time[which(as.numeric(AccidentData$Time)< 1142+60)] = 4
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 1141+60)]="23:59"
+
+
+
+
+
+AccidentData <- transform(AccidentData, Speed_limit = Speed_limit/60)
+
+AS<- rep(0,length(AccidentData$Accident_Severity))
+AS[which(AccidentData$Accident_Severity==1)] = "Fatal"
+AS[which(AccidentData$Accident_Severity==2)] = "Serious"
+AS[which(AccidentData$Accident_Severity==3)] = "Slight"
+
+
+AccidentData <- data.frame(AccidentData,time,timePeriod,days,AS)
+
+
 
 # Randomly select 20% of the data to be held out for model validation
 AccidentData.1.test.idx <- sample(which(AccidentData$Accident_Severity == 1),length(which(AccidentData$Accident_Severity == 1))*0.2,replace =TRUE)
@@ -79,8 +103,8 @@ AccidentData.test.ind <- c(AccidentData.1.test.idx,AccidentData.2.test.idx,Accid
 AccidentData.train.ind <- setdiff(1:nrow(AccidentData), AccidentData.test.ind)
 
 # Just pull the covariates available to marketers (cols 1:8) and the outcome (col 17)
-AccidentData.train <- AccidentData[AccidentData.train.ind, c(11,33,17,18,23,25,26,27,30,7)]
-AccidentData.test <- AccidentData[AccidentData.test.ind, c(11,33,17,18,23,25,26,27,30,7)]
+AccidentData.train <- AccidentData[AccidentData.train.ind, c(11,33,17,18,23,25,26,27,30,7,34,35,36)]
+AccidentData.test <- AccidentData[AccidentData.test.ind, c(11,33,17,18,23,25,26,27,30,7,34,35,36)]
 AccidentData.location <- AccidentData[,c(4,5,7)]
 ```
 
@@ -100,11 +124,11 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 ```
 ##Fit these data with multinomal regression.  And use Forward stepwise selection to select the best predictors.
 Try to fit the data with multinomal regression.
-```{r}
+```{r,cache =TRUE}
 
-mu.fit <- multinom(Accident_Severity ~ ., data = AccidentData.train )
+mu.fit <- multinom(Accident_Severity ~ .-timePeriod-days-AS, data = AccidentData.train)
 #names(coef(fit.km))[which(coef(summary(fit))[,4]<=0.05)]
-Accident.subset <- regsubsets(Accident_Severity ~ .,
+Accident.subset <- regsubsets(Accident_Severity ~ .-timePeriod-days-AS,
                data = AccidentData.train,
                nbest = 1,    # 1 best model for each number of predictors
                nvmax = NULL,    # NULL for no limit on number of variables
@@ -132,9 +156,9 @@ Run Clustering method on Longitude and Latitude
 #plot(AccidentData.location$Longitude)
 #plot(AccidentData.location$Latitude)
 
-mapgilbert <- get_map(location = c(lon = mean(AccidentData.location$Longitude), lat = mean(AccidentData.location$Latitude)), zoom = 5, scale = 2)
-
-ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, y = Latitude, fill = "red", alpha = 0.8), size = 5, shape = 21) +guides(fill=FALSE, alpha=FALSE, size=FALSE)
+mapgilbert <- get_map(location = c(lon = mean(AccidentData.location$Longitude), lat = mean(AccidentData.location$Latitude)), zoom = 4, scale = 2)
+# mean longitude = -1.377  mean latitude = 52.55353       NYC 40.71 N 74.00 W  Chicago 41.87 N 87.63 W
+ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, y = Latitude, fill = "red", alpha = 0.2), size = 2, shape = 21) +guides(fill=FALSE, alpha=FALSE, size=FALSE)
 ```
 
 
@@ -142,15 +166,15 @@ ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, 
 
 ```{r}
 #rescaling and plot
-AccidentData.location$Longitude <- (AccidentData.location$Longitude +8)*100
-AccidentData.location$Latitude <- (AccidentData.location$Latitude  - 50)*10
+AccidentData.location$Longitude <- (AccidentData.location$Longitude )#*100
+AccidentData.location$Latitude <- (AccidentData.location$Latitude ) #- 50)#*10
 AccidentData.location.1 <- AccidentData.location[which(AccidentData.location$Accident_Severity==1),c(1,2)]
 AccidentData.location.2 <- AccidentData.location[which(AccidentData.location$Accident_Severity==2),]
 AccidentData.location.3 <- AccidentData.location[which(AccidentData.location$Accident_Severity==3),]
 
 #plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==2)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==2)])
 #plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==3)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==3)])
-#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==1)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==1)],xlab = "Longitude", ylab = "Latitude",col = AccidentData.location$Accident_Severity[which(AccidentData.location$Accident_Severity==1)])
+plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==1)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==1)],xlab = "Longitude", ylab = "Latitude",col = AccidentData.location$Accident_Severity[which(AccidentData.location$Accident_Severity==1)])
 ```
  
  
@@ -168,7 +192,7 @@ Acc.location.clu <- kmeans(AccidentData.location,30)
 
 
 ```{r,cache = TRUE}
-Accident.rf = randomForest(Accident_Severity~.,data=AccidentData.train,mtry=4,importance=TRUE)
+Accident.rf = randomForest(Accident_Severity~.-timePeriod-days-AS,data=AccidentData.train,mtry=4,importance=TRUE)
 print (Accident.rf)
 ```
 
@@ -193,13 +217,115 @@ plot(modelroc)
 
 
 
-```{r}
+```{r,cache = TRUE}
 
-Accident.tr <- rpart(Accident_Severity ~ ., data = AccidentData.train, 
-                        control = rpart.control(minsplit=100, cp=0.002))
-plotcp(Accident.tr)
-Accident.tr$cptable
-Accident.pruned=prune(Accident.tr, cp = Accident.tr$cptable[2,1])
-plot(Accident.pruned)
-text(Accident.pruned)
+#Accident.tr <- rpart(Accident_Severity ~.-timePeriod-days-AS, data = AccidentData.train, 
+#                        control = rpart.control(minsplit=100, cp=0.002))
+#plotcp(Accident.tr)
+#Accident.tr$cptable
+#Accident.pruned=prune(Accident.tr, cp = Accident.tr$cptable[2,1])
+#plot(Accident.pruned)
+#text(Accident.pruned)
 ```
+
+
+These data fitting method shows poor prediction.
+
+
+
+##Conditional probability.
+Here we want to calculte some conditional probability. 
+####$P(Accident_Severity)$
+
+```{r}
+PAcc_Sev.1 = length(which(AccidentData$AS=="Fatal"))/nrow(AccidentData)
+PAcc_Sev.2 = length(which(AccidentData$AS=="Serious"))/nrow(AccidentData)
+PAcc_Sev.3 = length(which(AccidentData$AS=="Slight"))/nrow(AccidentData)
+```
+So $P(Accident Severity = 1 ) = 0.0112 $, $P(Accident Severity = 2 ) = 0.1436$ $P(Accident Severity = 3 ) = 0.8452$ 
+
+####$P(weekday or weekend|Accident_Severity)$
+```{r}
+ggplot(AccidentData, aes(AccidentData$days,color= AccidentData$AS)) + geom_density()
+
+PAcc_Sev_1.Day_wd = length(which(AccidentData[which(AccidentData$AS=="Fatal"),]$days ==
+                                   "Workday"))/length(which(AccidentData$AS=="Fatal"))
+
+PAcc_Sev_2.Day_wd = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$days ==
+                                   "Workday"))/length(which(AccidentData$AS=="Serious"))   
+
+PAcc_Sev_3.Day_wd = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$days ==
+                                   "Workday"))/length(which(AccidentData$AS=="Slight"))
+
+PAcc_Sev_1.Day_we = length(which(AccidentData[which(AccidentData$AS=="Fatal"),]$days ==
+                                   "Weekend"))/length(which(AccidentData$AS=="Fatal"))
+
+PAcc_Sev_2.Day_we = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$days ==
+                                   "Weekend"))/length(which(AccidentData$AS == "Serious"))   
+
+PAcc_Sev_3.Day_we = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$days ==
+                                   "Weekend"))/length(which(AccidentData$AS=="Slight"))
+PAcc_Sev.Day <- matrix(data = c(PAcc_Sev_1.Day_wd,PAcc_Sev_2.Day_wd,PAcc_Sev_3.Day_wd,PAcc_Sev_1.Day_we,PAcc_Sev_2.Day_we,PAcc_Sev_3.Day_we), nrow = 3,ncol=2,dimnames= list(c("Fatal","Serious","Slight"),c("Workday","Weekend")))
+cat("P(Accident_Severity|workday or weekend): \n")
+print(PAcc_Sev.Day)
+```
+
+
+####$P(time|Accident_Severity)
+
+```{r}
+ggplot(AccidentData.train, aes(AccidentData.train$timePeriod,color= AccidentData.train$AS)) + geom_density()
+
+
+PAcc_Sev_1.T_M = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod==
+                                   "Morning Rush Hours"))/length(which(AccidentData$AS=="Fatal"))
+
+PAcc_Sev_2.T_M = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
+                                   "Morning Rush Hours"))/length(which(AccidentData$AS=="Serious"))   
+
+PAcc_Sev_3.T_M = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
+                                   "Morning Rush Hours"))/length(which(AccidentData$AS=="Slight"))
+
+
+PAcc_Sev_1.T_D = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod==
+                                   "Day Time"))/length(which(AccidentData$AS=="Fatal"))
+
+PAcc_Sev_2.T_D = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
+                                   "Day Time"))/length(which(AccidentData$AS=="Serious"))   
+
+PAcc_Sev_3.T_D = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
+                                   "Day Time"))/length(which(AccidentData$AS=="Slight"))
+
+
+
+PAcc_Sev_1.T_NR = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod ==
+                                   "Night Rush Hours"))/length(which(AccidentData$AS=="Fatal"))
+
+
+PAcc_Sev_2.T_NR = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
+                                   "Night Rush Hours"))/length(which(AccidentData$AS=="Serious"))   
+
+PAcc_Sev_3.T_NR = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
+                                   "Night Rush Hours"))/length(which(AccidentData$AS=="Slight"))
+
+
+PAcc_Sev_1.T_N = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod ==
+                                   "Night"))/length(which(AccidentData$AS =="Fatal"))
+
+PAcc_Sev_2.T_N = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
+                                   "Night"))/length(which(AccidentData$AS=="Serious"))   
+
+PAcc_Sev_3.T_N = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
+                                   "Night"))/length(which(AccidentData$AS =="Slight"))
+
+PAcc_Sev.Time <- matrix(data = c(PAcc_Sev_1.T_M,PAcc_Sev_2.T_M,PAcc_Sev_3.T_M,
+                                PAcc_Sev_1.T_D,PAcc_Sev_2.T_D,PAcc_Sev_3.T_D,
+                                PAcc_Sev_1.T_NR,PAcc_Sev_2.T_NR,PAcc_Sev_3.T_NR,
+                                PAcc_Sev_1.T_N,PAcc_Sev_2.T_N,PAcc_Sev_3.T_N),
+                       nrow = 3,ncol=4,dimnames= list(  c("Fatal","Serious","Slight"),c("Morning Rush Hours","Day Time",
+                                                        "Night Rush Hours","Night")
+                                                    ))
+cat("P(Accident_Severity|Time): \n")
+print(PAcc_Sev.Time)
+```
+

@@ -17,3 +17,6 @@ pROC
 rattle
 rpart
 rpart.plot
+nnet
+leaps
+boot
