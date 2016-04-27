@@ -148,7 +148,7 @@ Acc.location.clu <- kmeans(AccidentData.location,30)
 
 
 
-```{r}
+```{r,cache = TRUE}
 Accident.rf = randomForest(Accident_Severity~.,data=AccidentData.train,mtry=4,importance=TRUE)
 print (Accident.rf)
 ```
@@ -156,4 +156,32 @@ print (Accident.rf)
 ```{r}
 importance(Accident.rf)
 varImpPlot(Accident.rf)
+
+```
+
+```{r}
+pred=predict(Accident.rf,AccidentData.test)
+class = rep(0,length(pred))
+class[which(pred >= 2.5)] = 3
+class[which(pred>=1.5 && pred < 2.5)]= 2
+class[which(pred<1.5)]=1
+class
+modelroc <- roc(AccidentData.test$Accident_Severity ,class)
+plot(modelroc)
+
+```
+
+
+
+
+
+```{r}
+
+Accident.tr <- rpart(Accident_Severity ~ ., data = AccidentData.train, 
+                        control = rpart.control(minsplit=100, cp=0.002))
+plotcp(Accident.tr)
+Accident.tr$cptable
+Accident.pruned=prune(Accident.tr, cp = Accident.tr$cptable[2,1])
+plot(Accident.pruned)
+text(Accident.pruned)
 ```

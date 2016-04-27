@@ -12,3 +12,8 @@ gam
 cluster
 fpc
 ggmap
+randomForest
+pROC
+rattle
+rpart
+rpart.plot
