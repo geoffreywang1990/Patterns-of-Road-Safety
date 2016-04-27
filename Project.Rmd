@@ -24,6 +24,10 @@ library(gam)
 library(cluster) 
 library(fpc)
 library(ggmap)
+library(randomForest)
+library(pROC)
+library(rattle)
+library(rpart.plot)
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -38,37 +42,6 @@ Let's start by loading the data.
 
 ```{r}
 AccidentData <- read.csv("http://www.andrew.cmu.edu/user/achoulde/95791/projects/Project%20D/DfTRoadSafety_Accidents_2012.csv", header = TRUE)
-
-# Transform temp and atemp to degrees C instead of [0,1] scale
-# Transform humidity to %
-# Transform wind speed (multiply by 67, the normalizing value)
-
-#bikes <- transform(bikes,
-#                   temp = 47 * temp - 8,
- #                  atemp = 66 * atemp - 16,
-  #                 hum = 100 * hum,
-   #                windspeed = 67 * windspeed)
-
-# The mapvalues() command from the plyr library allows us to easily
-# rename values in our variables.  Below we use this command to change season
-# from numeric codings to season names.
-
-#bikes <- transform(bikes, 
- #                  season = mapvalues(season, c(1,2,3,4), 
-  #                                    c("Winter", "Spring", "Summer", "Fall")))
-#plot(x=AccidentData$Longitude,y=AccidentData$Latitude)
-
-panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
-{
-     usr <- par("usr"); on.exit(par(usr))
-     par(usr = c(0, 1, 0, 1))
-     r <- abs(cor(x, y))
-     txt <- format(c(r, 0.123456789), digits = digits)[1]
-     txt <- paste0(prefix, txt)
-     if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
-     text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
-}
-#pairs(~Accident_Severity+Number_of_Vehicles+Number_of_Casualties+X1st_Road_Class+Junction_Detail,data=AccidentData,lower.panel = panel.cor)
 ```
 
 Now I am going to split these data 
@@ -78,6 +51,8 @@ Now I am going to split these data
 set.seed(531)
 AccidentData$Day_of_Week[which(AccidentData$Day_of_Week==7)]=1
 AccidentData$Day_of_Week[which(AccidentData$Day_of_Week!=1)]=2
+
+
 time=rep(0,length(AccidentData$Time))
 time[which(as.numeric(AccidentData$Time)< 421)]=1      #1: 00:00-06:59
 AccidentData$Time[which(as.numeric(AccidentData$Time)< 421)]="23:59"
@@ -90,6 +65,9 @@ AccidentData$Time[which(as.numeric(AccidentData$Time)< 1141)]="23:59"
 time[which(time==0)]=5
 
 AccidentData <- data.frame(AccidentData,time)
+
+AccidentData <- transform(AccidentData, Speed_limit = Speed_limit/10)
+
 # Randomly select 20% of the data to be held out for model validation
 AccidentData.1.test.idx <- sample(which(AccidentData$Accident_Severity == 1),length(which(AccidentData$Accident_Severity == 1))*0.2,replace =TRUE)
 AccidentData.2.test.idx <- sample(which(AccidentData$Accident_Severity == 2),length(which(AccidentData$Accident_Severity == 2))*0.2,replace =TRUE)
@@ -98,16 +76,31 @@ AccidentData.test.ind <- c(AccidentData.1.test.idx,AccidentData.2.test.idx,Accid
 AccidentData.train.ind <- setdiff(1:nrow(AccidentData), AccidentData.test.ind)
 
 # Just pull the covariates available to marketers (cols 1:8) and the outcome (col 17)
-AccidentData.train <- AccidentData[AccidentData.train.ind, c(10,11,33,17,18,23,25,26,27,30,7)]
-AccidentData.test <- AccidentData[AccidentData.test.ind, c(10,11,33,17,18,23,25,26,27,30,7)]
+AccidentData.train <- AccidentData[AccidentData.train.ind, c(11,33,17,18,23,25,26,27,30,7)]
+AccidentData.test <- AccidentData[AccidentData.test.ind, c(11,33,17,18,23,25,26,27,30,7)]
 AccidentData.location <- AccidentData[,c(4,5,7)]
+```
+
+
+```{r, cache = TRUE}
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+     usr <- par("usr"); on.exit(par(usr))
+     par(usr = c(0, 1, 0, 1))
+     r <- abs(cor(x, y))
+     txt <- format(c(r, 0.123456789), digits = digits)[1]
+     txt <- paste0(prefix, txt)
+     if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+     text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
+}
+#pairs(~.,data=AccidentData.train,lower.panel = panel.cor)
 ```
 
 Try to fit the data with logistic regression.
 ```{r}
 
-glm.fit <- glm(formula = Accident_Severity ~ .,family = binomial, data = AccidentData.train )
-names(coef(fit.km))[which(coef(summary(fit))[,4]<=0.05)]
+#glm.fit <- glm(formula = Accident_Severity ~ .,family = binomial, data = AccidentData.train )
+#names(coef(fit.km))[which(coef(summary(fit))[,4]<=0.05)]
 ```
 
 
@@ -155,11 +148,8 @@ Acc.location.clu <- kmeans(AccidentData.location,30)
 
 
 
-
-
-
 ```{r}
-Accident.rf = randomForest(Accident_Severity~.,data=AccidentData.train,mtry=sqrt(10),importance=TRUE)
+Accident.rf = randomForest(Accident_Severity~.,data=AccidentData.train,mtry=4,importance=TRUE)
 print (Accident.rf)
 ```
 
