@@ -72,9 +72,24 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 ```
 
 Now I am going to split these data 
+
+
 ```{r}
 set.seed(531)
+AccidentData$Day_of_Week[which(AccidentData$Day_of_Week==7)]=1
+AccidentData$Day_of_Week[which(AccidentData$Day_of_Week!=1)]=2
+time=rep(0,length(AccidentData$Time))
+time[which(as.numeric(AccidentData$Time)< 421)]=1      #1: 00:00-06:59
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 421)]="23:59"
+time[which(as.numeric(AccidentData$Time)< 542)]=2      #1: 07:00-09:00
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 542)]="23:59"
+time[which(as.numeric(AccidentData$Time)< 1021)]=3      #1: 09:01-16:59
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 1021)]="23:59"
+time[which(as.numeric(AccidentData$Time)< 1142)]=4      #1: 17:00-19:00
+AccidentData$Time[which(as.numeric(AccidentData$Time)< 1141)]="23:59"
+time[which(time==0)]=5
 
+AccidentData <- data.frame(AccidentData,time)
 # Randomly select 20% of the data to be held out for model validation
 AccidentData.1.test.idx <- sample(which(AccidentData$Accident_Severity == 1),length(which(AccidentData$Accident_Severity == 1))*0.2,replace =TRUE)
 AccidentData.2.test.idx <- sample(which(AccidentData$Accident_Severity == 2),length(which(AccidentData$Accident_Severity == 2))*0.2,replace =TRUE)
@@ -83,10 +98,19 @@ AccidentData.test.ind <- c(AccidentData.1.test.idx,AccidentData.2.test.idx,Accid
 AccidentData.train.ind <- setdiff(1:nrow(AccidentData), AccidentData.test.ind)
 
 # Just pull the covariates available to marketers (cols 1:8) and the outcome (col 17)
-AccidentData.train <- AccidentData[AccidentData.train.ind, c(10,11,12,17,18,23,25,26,27,30,7)]
-AccidentData.test <- AccidentData[AccidentData.test.ind, c(10,11,12,17,18,23,25,26,27,30,7)]
+AccidentData.train <- AccidentData[AccidentData.train.ind, c(10,11,33,17,18,23,25,26,27,30,7)]
+AccidentData.test <- AccidentData[AccidentData.test.ind, c(10,11,33,17,18,23,25,26,27,30,7)]
 AccidentData.location <- AccidentData[,c(4,5,7)]
 ```
+
+Try to fit the data with logistic regression.
+```{r}
+
+glm.fit <- glm(formula = Accident_Severity ~ .,family = binomial, data = AccidentData.train )
+names(coef(fit.km))[which(coef(summary(fit))[,4]<=0.05)]
+```
+
+
 
 Run Clustering method on Longitude and Latitude
 
@@ -94,7 +118,6 @@ Run Clustering method on Longitude and Latitude
 #plot the longitude and latitude in 1-D
 #plot(AccidentData.location$Longitude)
 #plot(AccidentData.location$Latitude)
-
 
 mapgilbert <- get_map(location = c(lon = mean(AccidentData.location$Longitude), lat = mean(AccidentData.location$Latitude)), zoom = 5, scale = 2)
 
@@ -127,4 +150,20 @@ Acc.location.clu <- kmeans(AccidentData.location,30)
 
 #plotcluster(AccidentData.location, Acc.location.clu.1$cluster)
 
+```
+
+
+
+
+
+
+
+```{r}
+Accident.rf = randomForest(Accident_Severity~.,data=AccidentData.train,mtry=sqrt(10),importance=TRUE)
+print (Accident.rf)
+```
+
+```{r}
+importance(Accident.rf)
+varImpPlot(Accident.rf)
 ```
