@@ -28,6 +28,9 @@ library(randomForest)
 library(pROC)
 library(rattle)
 library(rpart.plot)
+library(nnet)
+library(leaps)
+library(boot)
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -95,15 +98,32 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 }
 #pairs(~.,data=AccidentData.train,lower.panel = panel.cor)
 ```
-
-Try to fit the data with logistic regression.
+##Fit these data with multinomal regression.  And use Forward stepwise selection to select the best predictors.
+Try to fit the data with multinomal regression.
 ```{r}
 
-#glm.fit <- glm(formula = Accident_Severity ~ .,family = binomial, data = AccidentData.train )
+mu.fit <- multinom(Accident_Severity ~ ., data = AccidentData.train )
 #names(coef(fit.km))[which(coef(summary(fit))[,4]<=0.05)]
+Accident.subset <- regsubsets(Accident_Severity ~ .,
+               data = AccidentData.train,
+               nbest = 1,    # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               method = "forward", really.big = TRUE)
+print(names(coef(Accident.subset,id=5)))
+
+
 ```
 
+Construct a plot showing R-squared on the y-axis and model size on the x-axis.
+```{r}
+qplot(x=1:9,y=summary(Accident.subset)$rsq,xlab="Model Size",ylab="R-squared",geom=c("line", "point"))
+qplot(x=1:9,y=summary(Accident.subset)$cp,xlab="Model Size",ylab="AIC",geom=c("line", "point"))
+qplot(x=1:9,y=summary(Accident.subset)$bic,xlab="Model Size",ylab="BIC",geom=c("line", "point"))
+```
+We can see from the plot, the R-squared are pretty small, So the prediction is pretty unreliable.
 
+
+##Clustring the Longitude and Latitude
 
 Run Clustering method on Longitude and Latitude
 
@@ -147,7 +167,6 @@ Acc.location.clu <- kmeans(AccidentData.location,30)
 
 
 
-
 ```{r,cache = TRUE}
 Accident.rf = randomForest(Accident_Severity~.,data=AccidentData.train,mtry=4,importance=TRUE)
 print (Accident.rf)
@@ -170,7 +189,6 @@ modelroc <- roc(AccidentData.test$Accident_Severity ,class)
 plot(modelroc)
 
 ```
-
 
 
 
