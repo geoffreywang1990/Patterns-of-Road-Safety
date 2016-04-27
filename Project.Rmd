@@ -21,6 +21,9 @@ library(knitr)
 library(glmnet)
 library(plyr)
 library(gam)
+library(cluster) 
+library(fpc)
+library(ggmap)
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -68,7 +71,7 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 #pairs(~Accident_Severity+Number_of_Vehicles+Number_of_Casualties+X1st_Road_Class+Junction_Detail,data=AccidentData,lower.panel = panel.cor)
 ```
 
-
+Now I am going to split these data 
 ```{r}
 set.seed(531)
 
@@ -77,222 +80,51 @@ AccidentData.1.test.idx <- sample(which(AccidentData$Accident_Severity == 1),len
 AccidentData.2.test.idx <- sample(which(AccidentData$Accident_Severity == 2),length(which(AccidentData$Accident_Severity == 2))*0.2,replace =TRUE)
 AccidentData.3.test.idx <- sample(which(AccidentData$Accident_Severity == 3),length(which(AccidentData$Accident_Severity == 3))*0.2,replace =TRUE)
 AccidentData.test.ind <- c(AccidentData.1.test.idx,AccidentData.2.test.idx,AccidentData.3.test.idx)
-AccidentData.train.ind <- setdiff(1:nrow(marketing.upsample), AccidentData.test.ind)
+AccidentData.train.ind <- setdiff(1:nrow(AccidentData), AccidentData.test.ind)
 
 # Just pull the covariates available to marketers (cols 1:8) and the outcome (col 17)
 AccidentData.train <- AccidentData[AccidentData.train.ind, c(10,11,12,17,18,23,25,26,27,30,7)]
 AccidentData.test <- AccidentData[AccidentData.test.ind, c(10,11,12,17,18,23,25,26,27,30,7)]
 AccidentData.location <- AccidentData[,c(4,5,7)]
 ```
-Let's look at some boxplots of how bikeshare ride count varies with season.
 
-```{r, fig.height = 4, fig.width = 5} 
-qplot(data = bikes, x = season, y = cnt, fill = I(cbPalette[3]), geom = "boxplot")
+Run Clustering method on Longitude and Latitude
+
+```{r,cache = TRUE}
+#plot the longitude and latitude in 1-D
+#plot(AccidentData.location$Longitude)
+#plot(AccidentData.location$Latitude)
+
+
+mapgilbert <- get_map(location = c(lon = mean(AccidentData.location$Longitude), lat = mean(AccidentData.location$Latitude)), zoom = 5, scale = 2)
+
+ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, y = Latitude, fill = "red", alpha = 0.8), size = 5, shape = 21) +guides(fill=FALSE, alpha=FALSE, size=FALSE)
 ```
 
-There's something funny going on here.  Instead of showing up in seasonal order, the seasons in the plot are showing up in **alphabetical order**.  The following command reorders the seasons appropriately.
+
+
 
 ```{r}
-bikes <- transform(bikes, season = factor(season, levels = c("Winter", "Spring", "Summer", "Fall")))
+#rescaling and plot
+AccidentData.location$Longitude <- (AccidentData.location$Longitude +8)*100
+AccidentData.location$Latitude <- (AccidentData.location$Latitude  - 50)*10
+AccidentData.location.1 <- AccidentData.location[which(AccidentData.location$Accident_Severity==1),c(1,2)]
+AccidentData.location.2 <- AccidentData.location[which(AccidentData.location$Accident_Severity==2),]
+AccidentData.location.3 <- AccidentData.location[which(AccidentData.location$Accident_Severity==3),]
+
+#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==2)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==2)])
+#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==3)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==3)])
+#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==1)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==1)],xlab = "Longitude", ylab = "Latitude",col = AccidentData.location$Accident_Severity[which(AccidentData.location$Accident_Severity==1)])
 ```
-
-Now let's try that plot again.
-
-```{r, fig.height = 4, fig.width = 5} 
-qplot(data = bikes, x = season, y = cnt, fill = I(cbPalette[3]), geom = "boxplot")
-```
-
-Here's information on what the variables mean.
-
-  - instant: record index
-	- dteday : date
-	- season : season (1:Winter, 2:Spring, 3:Summer, 4:Fall)
-	- yr : year (0: 2011, 1:2012)
-	- mnth : month ( 1 to 12)
-	- hr : hour (0 to 23)
-	- holiday : weather day is holiday or not (extracted from http://dchr.dc.gov/page/holiday-schedule)
-	- weekday : day of the week
-	- workingday : if day is neither weekend nor holiday is 1, otherwise is 0.
-	+ weathersit : 
-		- 1: Clear, Few clouds, Partly cloudy, Partly cloudy
-		- 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
-		- 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
-		- 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
-	- temp : Temperature in Celsius. 
-	- atemp: Feeling temperature in Celsius. 
-	- hum: Normalized humidity. The values are divided to 100 (max)
-	- windspeed: Normalized wind speed. The values are divided to 67 (max)
-	- casual: count of casual users
-	- registered: count of registered users
-	- cnt: count of total rental bikes including both casual and registered
-
-### Problem 1: Qualitative predictors
-
-> The Season variable is an example of what's called a *qualitative* or *categorical* predictor.  In R, such variables are called `factors`.  This problems gets to fit a model with a qualitative predictor and to interpret the findings.
-
-
-##### **(a)** Fit a linear regression model with `cnt` as the response and `season` as the input.  Use the `summary()` and `kable()` commands to produce a nice looking coefficients table.
-
+ 
+ 
 ```{r}
-lm.fit = lm(cnt~season,data = bikes)
-summary(lm.fit)
-kable(coef(summary(lm.fit)))
+Acc.location.clu.1 <- kmeans(AccidentData.location.1,10)
+Acc.location.clu.2 <- kmeans(AccidentData.location.2,10)
+Acc.location.clu.3 <- kmeans(AccidentData.location.3,10)
+Acc.location.clu <- kmeans(AccidentData.location,30)
+#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==1)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==1)],xlab = "Longitude", ylab = "Latitude")
+
+#plotcluster(AccidentData.location, Acc.location.clu.1$cluster)
+
 ```
-
-##### **(b)** How many total coefficients are there in the model?
-
-- **Four**
-    
-    
-##### **(c)** How many coefficients are estimated for the `season` variable?
-  
-- **Three**
-    
-    
-##### **(d)** Interpret the coefficients of `season` in the model.
-   
-- **For categorical variables, the interpretation is relative to the given baseline. These coefficients represent difference from the baseline level. The baseline for season is winter, so, if's winter, the average rent will be 2604. Spring will be 2604+2388 = 4992, summer will be 2604+3030 = 5644, and fall will be 2604+2124 = 4728.**
-
-<p> **Hint**: If you have not previously studied how to interpret qualitative variables in regressions, begin by reading through the relevant sections of the **Suggested readings** for Lecture 2 </p>
-
-<hr>
-
-### Problem 2: Multiple linear regression
-
-> In this problem we'll practice fitting and interpreting the results of a multiple linear regression.
-
-##### **(a)** Fit a regression model with `cnt` as the response and the following variables as inputs: `temp`, `atemp`, `mnth`, `hum`, `windspeed`.  Use the `summary()` and `kable()` commands to produce a nice looking coefficients table.
-
-```{r}
-lm.fit=lm(formula=cnt~temp+atemp+mnth+hum+windspeed, data=bikes)
-kable(coef(summary(lm.fit)))
-```
-
-##### **(b)** Interpret the coefficients of `temp`, `mnth` and `hum` in the model.
-
-- **`temp`, `mnth` and `hum` are continuous. So the total rental bikes can be estimated by the number of these parameters. The `temp` get 1 degree higher, there will be 45.49 more. The `mnth` get one more, for example, in Feb., there will be 95.04 more bikes rent than Jan. Similarly, when the `hum` get higher by 1, the ridership decrease by 35.26. **
-    
-    
-##### **(c)** Which predictors are associated with increased ridership?  Which predictors are associated with decreased ridership?
-  
-- **`temp`,`atemp`,`mnth` are associated with increased ridership. `hum`,`windspeed` are associated with decreased ridership.**
-    
-##### **(d)** Which predictors are statistically significant at the 0.05 level?
-   
-- **`hum`,`windspeed`**
-
-<hr>
-
-### Problem 3:  Dealing with collinearity 
-
-> As you probably already know from your most recent regression class, *collinear* or *highly correlated* predictors can make interpreting regression coefficients problematic.  In this problem you will try to diagnose and address collinearity issues in the data.
-
-##### **(a)** Use the `pairs()` function on the set of variables used in **Problem 2** to check if any of the predictor variables are highly correlated with one another.  Your pairs plot should have scatterplots above the diagonal, and correlations below the diagonal.
-
-```{r}
-pairs(~temp+atemp+mnth+hum+windspeed, data=bikes)
-```
-
-**Hint**: A complete example of how to use the `pairs()` command to construct such plots may be found here: [Pairs plot example](http://www.andrew.cmu.edu/user/achoulde/94842/lectures/lecture08/lecture08-94842.html#collinearity-and-pairs-plots)
-
-##### **(b)** Are any of the predictors highly correlated?
-
-- **`temp` and `atemp`**
-
-##### **(c)** Are you surprised that these predictors are highly correlated, or can you think of a reason for why it makes sense that they should be correlated?
-
-- **I am not surprised. Because it's resonable that the feeling temperature highly correlated with temperature.**
-
-##### **(d)** Refit your regression model, but this time **omit** the `temp` variable.  Display the coefficients table for this model.
-
-```{r}
-lm.fit=lm(formula=cnt~atemp+mnth+hum+windspeed, data=bikes)
-kable(coef(summary(lm.fit)))
-```
-
-##### **(e)** What is the coefficient of `atemp` in this new model?  Is it very different from the `atemp` coefficient estimated in part **(b)**?  Is it statistically significant?  Explain your findings.
-
-- **The coefficient of `atemp` is `108.21019` in this new model. In part(b), it's 72.01. I don't think this is very different, and it's statistically significant. In the old model, while we count in `temp` and `atemp`, because these two parameters are highly correlated, so the two parameters give out one "infomation" to the `cnt`. In the new model, it can be seen that the sum of coefficient of `temp` and `atemp` in old modle approximately equals to the new coefficient, because the `atemp` absorb the info get from `temp`. THe statistically significant drop is higher in old model is because `temp` give out similar information as `atemp`, the new one without `temp` is more certain of the information get `atemp`, so it's statistically significant now. **
-
-
-##### **(f)** Here's some made-up data.  
-
-| Y  | X1 | X2 |
-|----|----|----|
-| 17 | 5  | 10 |
-| 8  | 2  | 4  |
-| 23 | 7  | 14 |
-| 5  | 1  | 2  |
-| 29 | 9  | 18 |
-| 38 | 12 | 24 |
-| 14 | 4  | 8  |
-| 5  | 1  | 2  |
-| 23 | 7  | 14 |
-
-##### Without doing any model fitting, determine the least squares coefficient estimates $\hat\beta_0$, $\hat\beta_1$ and $\hat\beta_2$ in the model
-
-$$ y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \epsilon $$
-
-- **$\beta_0 =2,\ \beta_1 = 3,\ \beta_2 = 0$** 
-
-##### Is your answer unique?  Can you think of 2 other choices of $\hat\beta_0$, $\hat\beta_1$ and $\hat\beta_2$ that have the same RSS?  Explain what's happening.
-
-- **It's not unique. Because $X_2$ is double $X_1$, so there are infinate choices of $\hat\beta_0$, $\hat\beta_1$ and $\hat\beta_2$. For Exampls:
-$$\beta_0 =2,\ \beta_1 = 0.6,\ \beta_2 = 1.2$$   or  $$\beta_0 = 2,\ \beta_1 = 0,\ \beta_2 = 1.5$$**
-
-<hr>
-
-### Problem 4: Exploring non-linearities
-
-> **Hint**: For this problem, you will find it useful to know about the `jitter` feature in graphics.  [Begin by reviewing the code at this link](http://www.andrew.cmu.edu/user/achoulde/94842/misc/extra_tips.html#jittering-points), and be sure to use what you feel to be an appropriate amount of jitter in your plots for **(a)**, **(b)** and **(c)**.  You **should not** use jitter for parts **(d)** onward.  
-
-##### **(a)** Using `ggplot2` graphics, construct a scatterplot of `cnt` (bikeshare count) across `mnth` (month of the year).  Describe what you see.  Does a linear relationship appear to be a good way of modeling how bikeshare count varies with month?  
-
-```{r}
-qplot(data = bikes, x = mnth, y = cnt, geom = "jitter",color= as.factor(mnth))+guides(color=FALSE)
-```
-
-- **From the plot, it seems like use a curve to fit the data would be a better idea.**
-
-##### **(b)** Use `ggplot2`'s `stat_smooth()` overlays to try out *different degree polynomial fits* for modeling the relationship between `cnt` and `month`.  Display the lowest degree polynomial fit that appears to nicely capture the trends in the data.  Explain your choice.
-
-```{r}
-qplot(data = bikes, x = mnth, y = cnt, geom = "jitter",color= as.factor(mnth)) +guides(color=FALSE)+ stat_smooth(method = "lm", formula = y ~ poly(x, 2),aes(group=1) )
-```
-
-- **I choose the second degree polynomial fits. Because when I calculate the MSE of each fit, there is a shrap drop from degree 1 to degree 2. However, when I keep increase the degree, there is no obviously improvement of the accuracy.**
-
-##### **(c)** Use `ggplot2`'s `stat_smooth()` overlays to try out *different step functions* for modeling the relationship between `cnt` and `month`.  Display the model with the smallest number of "breaks" or "cuts" that nicely captures the trends in the data.  Explain your choice.  
-
-```{r}
-qplot(data = bikes, x = mnth, y = cnt, geom = "jitter",color= as.factor(mnth)) + guides(color=FALSE)+ stat_smooth(method = "lm", formula = y ~ cut(x, breaks = c(-Inf,3, 10, Inf)), aes(group=1) )
-```
-
-- **When I looked into the plot, the data from Jan. to Mar. are gathered around 2500, from April to Sep. the data are clustered around 5000, and Oct. to Dec, it drop to around 3000. So I cut the data by Mar. and Oct.**
-
-##### Which do you think better describes the relationship between `cnt` and `mnth`: Polynomials, or Step Functions?  Explain your answer.
-
-- **Polynomials. I think polynominal can reflect the growth trend or decrease trend amoung different months. **
-
-##### **(d)**  Repeat parts **(a)** and **(b)** to determine appropriate degree polynomials for modeling the relationship between `cnt` and the other inputs: `atemp`, `hum` and `windspeed`.  Summarize your choices.  (Note: your polynomials can have different degrees for different inputs.)
-
-```{r}
-qplot(data = bikes, x = atemp, y = cnt, color= as.factor(atemp)) + guides(color=FALSE)+ stat_smooth(method = "lm", formula = y ~ poly(x,1), aes(group=1) )
-qplot(data = bikes, x = hum, y = cnt, color= as.factor(hum)) + guides(color=FALSE)+ stat_smooth(method = "lm", formula = y ~ poly(x,2), aes(group=1) )
-qplot(data = bikes, x = windspeed, y = cnt, color= as.factor(windspeed)) + guides(color=FALSE)+ stat_smooth(method = "lm", formula = y ~ poly(x,1), aes(group=1) )
-```
-
-- **I choose degree 1 for feeling tempeature, because from both the data(it's looks like linear) and common sense, people will not want to ride bikes when tempeature is high. Also I calculated the MSE(use K-fold cross-validation) of each modle of each attribute. It showes there is no big difference of MSE between degree 1 and degree 2. So does the `windspeed`. And degree 2 for `hum`, because there is a sharp drop of the MSE between degree 1 and 2.**
-
-##### **(e)** Use your answers to parts **(b)** and **(d)** to fit a polynomial regression model that regresses `cnt` on polynomials in the input variables: `atemp`, `mnth`, `hum`, and `windspeed`. How does the R-squared of this model compare to the R-squared of the model you fit in Problem 3(d)?  
-
-```{r}
-lm.fit=lm(formula=cnt~poly(atemp,1,raw = TRUE)+poly(mnth,2,raw = TRUE)+poly(hum,2,raw = TRUE)+poly(windspeed,1,raw = TRUE), data=bikes)
-kable(coef(summary(lm.fit)))
-```
-
-- **It's bigger than the R-squared of the model you fit in Problem 3(d).**
-
-##### **(f)** What is the total number of parameters in the model you fit in part **(e)**?  How does this compare to the number of parameters in the model fit in Problem 3(d)?
-
-- **The total number pf parameters in this model is 6. And it's 5 in the model fit in Problem 3(d).**

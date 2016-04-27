@@ -1,0 +1,14 @@
+base
+ggplot2
+ISLR
+MASS
+klaR
+knitr
+Matrix
+foreach
+glmnet
+plyr
+gam
+cluster
+fpc
+ggmap
