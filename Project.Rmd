@@ -79,11 +79,12 @@ timePeriod[which(as.numeric(AccidentData$Time)< 1142+60)]="Night Rush Hours"    
 time[which(as.numeric(AccidentData$Time)< 1142+60)] = 4
 AccidentData$Time[which(as.numeric(AccidentData$Time)< 1141+60)]="23:59"
 
+timePeriod[which(timePeriod == 0)]= "Night"
+AccidentData$time[which(as.numeric(AccidentData$time)==0)] = 1
 
 
 
 
-AccidentData <- transform(AccidentData, Speed_limit = Speed_limit/60)
 
 AS<- rep(0,length(AccidentData$Accident_Severity))
 AS[which(AccidentData$Accident_Severity==1)] = "Fatal"
@@ -91,7 +92,83 @@ AS[which(AccidentData$Accident_Severity==2)] = "Serious"
 AS[which(AccidentData$Accident_Severity==3)] = "Slight"
 
 
-AccidentData <- data.frame(AccidentData,time,timePeriod,days,AS)
+Roadtype=rep(0,length(AccidentData$Road_Type))
+
+Roadtype[which(AccidentData$Road_Type==1)]="1"
+Roadtype[which(AccidentData$Road_Type==2)]="2"
+Roadtype[which(AccidentData$Road_Type==3)]="3"
+Roadtype[which(AccidentData$Road_Type==4)]="4"
+Roadtype[which(AccidentData$Road_Type==5)]="5"
+Roadtype[which(AccidentData$Road_Type==6)]="6"
+Roadtype[which(AccidentData$Road_Type==7)]="7"
+Roadtype[which(AccidentData$Road_Type==8)]="8"
+Roadtype[which(AccidentData$Road_Type==9)]="9"
+
+Pedestrian.humancontrol=rep(0,length(AccidentData$Pedestrian_Crossing.Human_Control))
+
+Pedestrian.humancontrol[which(AccidentData$Pedestrian_Crossing.Human_Control==0)]="0"
+Pedestrian.humancontrol[which(AccidentData$Pedestrian_Crossing.Human_Control==1)]="1"
+Pedestrian.humancontrol[which(AccidentData$Pedestrian_Crossing.Human_Control==2)]="2"
+
+Lightcondition=rep(0,length(AccidentData$Light_Conditions))
+
+Lightcondition[which(AccidentData$Light_Conditions==1)]="1"
+Lightcondition[which(AccidentData$Light_Conditions==2)]="2"
+Lightcondition[which(AccidentData$Light_Conditions==3)]="3"
+Lightcondition[which(AccidentData$Light_Conditions==4)]="4"
+Lightcondition[which(AccidentData$Light_Conditions==5)]="5"
+Lightcondition[which(AccidentData$Light_Conditions==6)]="6"
+Lightcondition[which(AccidentData$Light_Conditions==7)]="7"
+
+Weathercondition=rep(0,length(AccidentData$Weather_Conditions))
+
+Weathercondition[which(AccidentData$Weather_Conditions==1)]="1"
+Weathercondition[which(AccidentData$Weather_Conditions==2)]="2"
+Weathercondition[which(AccidentData$Weather_Conditions==3)]="3"
+Weathercondition[which(AccidentData$Weather_Conditions==4)]="4"
+Weathercondition[which(AccidentData$Weather_Conditions==5)]="5"
+Weathercondition[which(AccidentData$Weather_Conditions==6)]="6"
+Weathercondition[which(AccidentData$Weather_Conditions==7)]="7"
+Weathercondition[which(AccidentData$Weather_Conditions==8)]="8"
+Weathercondition[which(AccidentData$Weather_Conditions==9)]="9"
+
+Roadsurfacecondition=rep(0,length(AccidentData$Road_Surface_Conditions))
+
+Roadsurfacecondition[which(AccidentData$Road_Surface_Conditions==-1)]="-1"
+Roadsurfacecondition[which(AccidentData$Road_Surface_Conditions==1)]="1"
+Roadsurfacecondition[which(AccidentData$Road_Surface_Conditions==2)]="2"
+Roadsurfacecondition[which(AccidentData$Road_Surface_Conditions==3)]="3"
+Roadsurfacecondition[which(AccidentData$Road_Surface_Conditions==4)]="4"
+Roadsurfacecondition[which(AccidentData$Road_Surface_Conditions==5)]="5"
+
+
+UrbanorRural=rep(0,length(AccidentData$Urban_or_Rural_Area))
+
+UrbanorRural[which(AccidentData$Urban_or_Rural_Area==1)]="1"
+UrbanorRural[which(AccidentData$Urban_or_Rural_Area==2)]="2"
+
+Speedlimit=rep(0,length(AccidentData$Speed_limit))
+
+Speedlimit[which(AccidentData$Speed_limit==10)]="10"
+Speedlimit[which(AccidentData$Speed_limit==20)]="20"
+Speedlimit[which(AccidentData$Speed_limit==30)]="30"
+Speedlimit[which(AccidentData$Speed_limit==40)]="40"
+Speedlimit[which(AccidentData$Speed_limit==50)]="50"
+Speedlimit[which(AccidentData$Speed_limit==60)]="60"
+Speedlimit[which(AccidentData$Speed_limit==70)]="70"
+
+AS2<- rep(0,length(AccidentData$Accident_Severity))
+AS2[which(AccidentData$Accident_Severity==1)] = "Fatal"
+AS2[which(AccidentData$Accident_Severity==2)] = "Fatal"
+AS2[which(AccidentData$Accident_Severity==3)] = "Slight"
+
+
+AccidentData <- data.frame(AccidentData,time,timePeriod,days,AS,Roadtype,Pedestrian.humancontrol,Lightcondition,Weathercondition,Roadsurfacecondition,UrbanorRural,Speedlimit,AS2)
+
+
+
+
+
 
 
 
@@ -105,7 +182,10 @@ AccidentData.train.ind <- setdiff(1:nrow(AccidentData), AccidentData.test.ind)
 # Just pull the covariates available to marketers (cols 1:8) and the outcome (col 17)
 AccidentData.train <- AccidentData[AccidentData.train.ind, c(11,33,17,18,23,25,26,27,30,7,34,35,36)]
 AccidentData.test <- AccidentData[AccidentData.test.ind, c(11,33,17,18,23,25,26,27,30,7,34,35,36)]
-AccidentData.location <- AccidentData[,c(4,5,7)]
+AccidentData.location <- AccidentData[,c(4,5,7,13)]
+
+AccidentData.train.nb <- AccidentData[AccidentData.train.ind, c(34,35,37,38,39,40,41,42,43,44)]
+AccidentData.test.nb <- AccidentData[AccidentData.test.ind, c(34,35,37,38,39,40,41,42,43,44)]
 ```
 
 
@@ -120,7 +200,7 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
      if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
      text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
 }
-#pairs(~.,data=AccidentData.train,lower.panel = panel.cor)
+#pairs(~.,data=AccidentData.train.nb,lower.panel = panel.cor)
 ```
 ##Fit these data with multinomal regression.  And use Forward stepwise selection to select the best predictors.
 Try to fit the data with multinomal regression.
@@ -154,11 +234,15 @@ Run Clustering method on Longitude and Latitude
 ```{r,cache = TRUE}
 #plot the longitude and latitude in 1-D
 #plot(AccidentData.location$Longitude)
-#plot(AccidentData.location$Latitude)
 
-mapgilbert <- get_map(location = c(lon = mean(AccidentData.location$Longitude), lat = mean(AccidentData.location$Latitude)), zoom = 4, scale = 2)
-# mean longitude = -1.377  mean latitude = 52.55353       NYC 40.71 N 74.00 W  Chicago 41.87 N 87.63 W
-ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, y = Latitude, fill = "red", alpha = 0.2), size = 2, shape = 21) +guides(fill=FALSE, alpha=FALSE, size=FALSE)
+
+
+
+
+
+mapgilbert <- get_map(location = c(lon = mean(AccidentData.location$Longitude), lat = mean(AccidentData.location$Latitude)), zoom = 5, scale = 2)
+
+ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, y = Latitude, fill = AccidentData.location$Accident_Severity, alpha = 0.2), size = 2, shape = 21) +guides(fill=FALSE, alpha=FALSE, size=FALSE)
 ```
 
 
@@ -166,27 +250,37 @@ ggmap(mapgilbert) + geom_point(data = AccidentData.location, aes(x = Longitude, 
 
 ```{r}
 #rescaling and plot
-AccidentData.location$Longitude <- (AccidentData.location$Longitude )#*100
-AccidentData.location$Latitude <- (AccidentData.location$Latitude ) #- 50)#*10
-AccidentData.location.1 <- AccidentData.location[which(AccidentData.location$Accident_Severity==1),c(1,2)]
-AccidentData.location.2 <- AccidentData.location[which(AccidentData.location$Accident_Severity==2),]
-AccidentData.location.3 <- AccidentData.location[which(AccidentData.location$Accident_Severity==3),]
+rateLetter <- c()
+lon <- c()
+lat <- c()
+rate <-c()
 
-#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==2)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==2)])
-#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==3)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==3)])
-plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==1)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==1)],xlab = "Longitude", ylab = "Latitude",col = AccidentData.location$Accident_Severity[which(AccidentData.location$Accident_Severity==1)])
-```
- 
- 
-```{r}
-Acc.location.clu.1 <- kmeans(AccidentData.location.1,10)
-Acc.location.clu.2 <- kmeans(AccidentData.location.2,10)
-Acc.location.clu.3 <- kmeans(AccidentData.location.3,10)
-Acc.location.clu <- kmeans(AccidentData.location,30)
-#plot(AccidentData.location$Longitude[which(AccidentData.location$Accident_Severity==1)],AccidentData.location$Latitude[which(AccidentData.location$Accident_Severity==1)],xlab = "Longitude", ylab = "Latitude")
+priorRate <- length(which(AccidentData.location$Accident_Severity != 3))/length(AccidentData.location$Accident_Severity)
+for( i in unique(AccidentData.location$Local_Authority_.District.)){
+  
+  r = length(which(AccidentData.location[which(AccidentData.location$Local_Authority_.District. == i),]$Accident_Severity != 3))/length(AccidentData.location[which(AccidentData.location$Local_Authority_.District. == i),]$Accident_Severity)
+  rate <- c(rate,r)
+  if(r>priorRate){
+    rateLetter <- c(rateLetter,"High Serious Rate")
+  }
+  else{
+    rateLetter <- c(rateLetter,"Low Serious Rate")
+  }
+  
+  lon <- c(lon,mean(AccidentData.location[which(AccidentData.location$Local_Authority_.District. == i),]$Longitude))
+  lat <- c(lat,mean(AccidentData.location[which(AccidentData.location$Local_Authority_.District. == i),]$Latitude))
+}
+geomInfo <- data.frame(rate,lon,lat,rateLetter)
 
-#plotcluster(AccidentData.location, Acc.location.clu.1$cluster)
+ggmap(mapgilbert) + geom_point(data = geomInfo, aes(x = lon, y = lat, fill = rateLetter, alpha = 0.2), size = 2, shape = 21)
 
+geomInfo.km <- data.frame(rate,lon,lat)
+geomInfo.km.fit <- kmeans(geomInfo.km, 10)
+geomInfo.km.fit.center <- data.frame(geomInfo.km.fit$center)
+geomInfo.km.fit.center[,"rate"][which(geomInfo.km.fit.center[,"rate"]>priorRate)] <- "High Serious Rate"
+geomInfo.km.fit.center[,"rate"][which(geomInfo.km.fit.center[,"rate"]<priorRate)] <- "Low Serious Rate"
+
+ggmap(mapgilbert) + geom_point(data = geomInfo.km.fit.center, aes(x = lon, y = lat, fill = rate), size = 2, shape = 21)
 ```
 
 
@@ -235,97 +329,58 @@ These data fitting method shows poor prediction.
 
 ##Conditional probability.
 Here we want to calculte some conditional probability. 
-####$P(Accident_Severity)$
 
+Here is some result using Naive Bayes. 
 ```{r}
-PAcc_Sev.1 = length(which(AccidentData$AS=="Fatal"))/nrow(AccidentData)
-PAcc_Sev.2 = length(which(AccidentData$AS=="Serious"))/nrow(AccidentData)
-PAcc_Sev.3 = length(which(AccidentData$AS=="Slight"))/nrow(AccidentData)
-```
-So $P(Accident Severity = 1 ) = 0.0112 $, $P(Accident Severity = 2 ) = 0.1436$ $P(Accident Severity = 3 ) = 0.8452$ 
+# Naive Bayes 
 
-####$P(weekday or weekend|Accident_Severity)$
-```{r}
-ggplot(AccidentData, aes(AccidentData$days,color= AccidentData$AS)) + geom_density()
+accident.nb <- NaiveBayes(AccidentData.train.nb$AS2~.,data=AccidentData.train.nb,usekernel = TRUE)
 
-PAcc_Sev_1.Day_wd = length(which(AccidentData[which(AccidentData$AS=="Fatal"),]$days ==
-                                   "Workday"))/length(which(AccidentData$AS=="Fatal"))
+nb.perdict=predict(accident.nb,newdata=AccidentData.test.nb)
+# Confusion matrix
 
-PAcc_Sev_2.Day_wd = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$days ==
-                                   "Workday"))/length(which(AccidentData$AS=="Serious"))   
+confusion.nb <- table(nb.perdict$class, AccidentData.test.nb$AS2)
+confusion.nb
 
-PAcc_Sev_3.Day_wd = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$days ==
-                                   "Workday"))/length(which(AccidentData$AS=="Slight"))
-
-PAcc_Sev_1.Day_we = length(which(AccidentData[which(AccidentData$AS=="Fatal"),]$days ==
-                                   "Weekend"))/length(which(AccidentData$AS=="Fatal"))
-
-PAcc_Sev_2.Day_we = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$days ==
-                                   "Weekend"))/length(which(AccidentData$AS == "Serious"))   
-
-PAcc_Sev_3.Day_we = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$days ==
-                                   "Weekend"))/length(which(AccidentData$AS=="Slight"))
-PAcc_Sev.Day <- matrix(data = c(PAcc_Sev_1.Day_wd,PAcc_Sev_2.Day_wd,PAcc_Sev_3.Day_wd,PAcc_Sev_1.Day_we,PAcc_Sev_2.Day_we,PAcc_Sev_3.Day_we), nrow = 3,ncol=2,dimnames= list(c("Fatal","Serious","Slight"),c("Workday","Weekend")))
-cat("P(Accident_Severity|workday or weekend): \n")
-print(PAcc_Sev.Day)
+# Misclassification rate:
+1 - sum(diag(confusion.nb)) / sum(confusion.nb)
 ```
 
+We want to see the Likelyhood of Serious Accident happen given each condition. So we can tell in which condition the accident will be more serious. 
 
-####$P(time|Accident_Severity)
+Here we conbined the Accident Severity 1 and 2 as serious, and leave 3 as slight. And in each plot, the horizontal line is the Prior of the serious accident happen. 
+```{r,cache=TRUE}
 
-```{r}
-ggplot(AccidentData.train, aes(AccidentData.train$timePeriod,color= AccidentData.train$AS)) + geom_density()
+PFatal <- length(which(AccidentData.train.nb$AS2=="Fatal"))/nrow(AccidentData.train.nb)
+PSlight <- length(which(AccidentData.train.nb$AS2=="Slight"))/nrow(AccidentData.train.nb)
 
+predit <- colnames(AccidentData.train.nb)
+posteroriResult <- list()
+for( i in predit[1:length(predit)-1]){
+  resultif <- c()
+  resultis <- c()
+  CP <- eval(parse(text = paste("accident.nb$tables$",i)))
+  
+  type <- colnames(CP)
+  for(j in type){
+    Pij <-length(which(eval(parse(text = paste("AccidentData.train.nb$",i,sep="")))==j))/length(eval(parse(text = paste("AccidentData.train.nb$",i,sep=""))))
+    
+    
+    resultif <- c(resultif,CP["Fatal",j]*PFatal/Pij)
+    
+    resultis <- c(resultis,CP["Slight",j]*PSlight/Pij)
+  }
+  
+  assign( i,data.frame("Fatal" = resultif,"Slight"= resultis,row.names = type))
+  #posteroriResult[length(posteroriResult)+1] <- eval(parse(text = i))
+  
+  posteroriResult[[paste(i)]]<- eval(parse(text = i))
+  draw <- qplot( x=type,y=resultif,xlab = paste(i),ylab = paste("P(Fatal|",i,")",sep=""))+ geom_hline(yintercept=PFatal)
 
-PAcc_Sev_1.T_M = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod==
-                                   "Morning Rush Hours"))/length(which(AccidentData$AS=="Fatal"))
+  print(draw)
 
-PAcc_Sev_2.T_M = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
-                                   "Morning Rush Hours"))/length(which(AccidentData$AS=="Serious"))   
-
-PAcc_Sev_3.T_M = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
-                                   "Morning Rush Hours"))/length(which(AccidentData$AS=="Slight"))
-
-
-PAcc_Sev_1.T_D = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod==
-                                   "Day Time"))/length(which(AccidentData$AS=="Fatal"))
-
-PAcc_Sev_2.T_D = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
-                                   "Day Time"))/length(which(AccidentData$AS=="Serious"))   
-
-PAcc_Sev_3.T_D = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
-                                   "Day Time"))/length(which(AccidentData$AS=="Slight"))
-
-
-
-PAcc_Sev_1.T_NR = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod ==
-                                   "Night Rush Hours"))/length(which(AccidentData$AS=="Fatal"))
-
-
-PAcc_Sev_2.T_NR = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
-                                   "Night Rush Hours"))/length(which(AccidentData$AS=="Serious"))   
-
-PAcc_Sev_3.T_NR = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
-                                   "Night Rush Hours"))/length(which(AccidentData$AS=="Slight"))
+}
+print(posteroriResult)
 
 
-PAcc_Sev_1.T_N = length(which(AccidentData[which(AccidentData.train$AS=="Fatal"),]$timePeriod ==
-                                   "Night"))/length(which(AccidentData$AS =="Fatal"))
-
-PAcc_Sev_2.T_N = length(which(AccidentData[which(AccidentData$AS=="Serious"),]$timePeriod ==
-                                   "Night"))/length(which(AccidentData$AS=="Serious"))   
-
-PAcc_Sev_3.T_N = length(which(AccidentData[which(AccidentData$AS=="Slight"),]$timePeriod ==
-                                   "Night"))/length(which(AccidentData$AS =="Slight"))
-
-PAcc_Sev.Time <- matrix(data = c(PAcc_Sev_1.T_M,PAcc_Sev_2.T_M,PAcc_Sev_3.T_M,
-                                PAcc_Sev_1.T_D,PAcc_Sev_2.T_D,PAcc_Sev_3.T_D,
-                                PAcc_Sev_1.T_NR,PAcc_Sev_2.T_NR,PAcc_Sev_3.T_NR,
-                                PAcc_Sev_1.T_N,PAcc_Sev_2.T_N,PAcc_Sev_3.T_N),
-                       nrow = 3,ncol=4,dimnames= list(  c("Fatal","Serious","Slight"),c("Morning Rush Hours","Day Time",
-                                                        "Night Rush Hours","Night")
-                                                    ))
-cat("P(Accident_Severity|Time): \n")
-print(PAcc_Sev.Time)
 ```
-
